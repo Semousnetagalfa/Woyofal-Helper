@@ -128,7 +128,7 @@ def verify():
     return "Erreur de vérification du token", 403
 
 
-@application.route('/webhook', methods=['POST'])
+@application.route('/', methods=['POST'])
 def webhook():
     data = request.get_json()
     try:
