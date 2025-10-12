@@ -154,13 +154,13 @@ def webhook():
         if sender not in sessions:
             sessions[sender] = {'step': 1}
 
-            send_message(sender, "Bienvenue sur Woyofal Helper 👋. \n" \
+            send_message(sender, "Bienvenue sur Woyofal Helper 👋. \n\n" \
             "Ce service a pour but de vous aider à estimer le nombre de kwh que vous allez recevoir après votre recharge.\n" \
-            "Afin de pouvoir vous aider, nous allons avoir besoin de quelques informations :\n" \
-            "1. La puissance souscrite : DPP pour Domestique Petite Puissance (puissance la plus fréquente) ou DMP pour Domestique Moyenne Puissance \n" \
-            "2. S'agit-il de votre première recharge du mois. Si oui on passe directement à l'étape 4 \n" \
-            "3. S'il ne s'agit pas de votre première, le montant total déjà rechargé dans le mois (par exemple 15.000 si vous aviez déjà rechargé 10.000 et 5.000 FCFA plutôt dans le mois) \n" \
-            "Enfin le montant que vous souhaitez recharger \n" \
+            "Afin de pouvoir vous aider, nous allons avoir besoin de quelques informations :\n\n" \
+            "1. La puissance souscrite : DPP pour Domestique Petite Puissance (puissance la plus fréquente) ou DMP pour Domestique Moyenne Puissance \n\n" \
+            "2. S'agit-il de votre première recharge du mois. Si oui on passe directement à l'étape 4 \n\n" \
+            "3. S'il ne s'agit pas de votre première, le montant total déjà rechargé dans le mois (par exemple 15.000 si vous aviez déjà rechargé 10.000 et 5.000 FCFA plutôt dans le mois) \n\n" \
+            "4. Enfin le montant que vous souhaitez recharger \n\n\n\n" \
             "A tout moment vous recommencer au début en répondant RECOMMENCER")
 
             send_button_message(sender, "Quelle est votre puissance souscrite ?", ["DPP", "DMP"])
