@@ -200,10 +200,10 @@ def webhook():
                 if sessions[sender]['premiere_recharge'] :
                     sessions[sender]['montant_deja_recharge']=0 
                     sessions[sender]['step'] = 4
-                    send_message(sender, "Quel est le montant que vous souhaitez recharger ?")
+                    send_message(sender, "Quel est le montant que vous souhaitez recharger ? (Ou recommencer pour revenir au début)")
                 else:
                     sessions[sender]['step'] = 3
-                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ?") 
+                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ? (Ou recommencer pour revenir au début)") 
             else:  
                 send_message(sender, "Merci de répondre par 'oui' ou 'non'.")         
         elif sessions[sender]['step'] == 3:
@@ -211,24 +211,26 @@ def webhook():
             sessions[sender]['last_active'] = datetime.now()
             if not is_valid_amount(text):
                 send_message(sender, f"Merci de saisir un montant déja rechargé valide (supérieur à 1.000 FCFA).")
-            sessions[sender]['montant_deja_recharge'] = float(text)
-            sessions[sender]['step'] = 4
-            send_message(sender, "Quel est le montant que vous souhaitez recharger ?")
+            else :
+                sessions[sender]['montant_deja_recharge'] = float(text)
+                sessions[sender]['step'] = 4
+                send_message(sender, "Quel est le montant que vous souhaitez recharger ?(Ou recommencer pour revenir au début)")
         elif sessions[sender]['step'] == 4:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             if not is_valid_amount(text):
                 send_message(sender, f"Merci de saisir un montant à recharger valide (supérieur à 1.000 FCFA).")
-            sessions[sender]['montant_recharge'] = float(text)
-            # Calcul
-            result = calcul_kwh(
-                puissance=sessions[sender]['puissance'],
-                montant=float(sessions[sender]['montant_recharge']),
-                cumul_montant=float(sessions[sender]['montant_deja_recharge']),
-                is_premiere_recharge=sessions[sender]['premiere_recharge']
-            )
-            send_message(sender, f"✅ Vous recevrez environ {result} kWh.")
-            del sessions[sender]  # Reset session
+            else :
+                sessions[sender]['montant_recharge'] = float(text)
+                # Calcul
+                result = calcul_kwh(
+                    puissance=sessions[sender]['puissance'],
+                    montant=float(sessions[sender]['montant_recharge']),
+                    cumul_montant=float(sessions[sender]['montant_deja_recharge']),
+                    is_premiere_recharge=sessions[sender]['premiere_recharge']
+                )
+                send_message(sender, f"✅ Vous recevrez environ {result} kWh.")
+                del sessions[sender]  # Reset session
 
     except Exception as e:
         return f"Erreur : {e}"
