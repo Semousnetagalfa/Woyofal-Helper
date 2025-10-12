@@ -153,9 +153,10 @@ def webhook():
         # Logique par étapes
         if sender not in sessions:
             sessions[sender] = {'step': 1}
-            '''send_message(sender, "Bienvenue sur Woyofal Helper 👋. Quelle est votre puissance souscrite ?")'''
 
-            send_button_message(sender, "Quelle est votre puissance souscrite ?", ["DPP", "DMP"])
+            send_message(sender, "Bienvenue sur Woyofal Helper 👋.")
+
+            '''send_button_message(sender, "Quelle est votre puissance souscrite ?", ["DPP", "DMP"])'''
 
             options = [("DPP", "DPP"),
                        ("DMP", "DMP"),
