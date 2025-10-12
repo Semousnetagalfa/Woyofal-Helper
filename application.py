@@ -94,7 +94,7 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
             total_kwh += kwh_tranche
             montant_restant = 0
             break    
-    return round(total_kwh, 2)
+    return round(total_kwh, 1)
 
 @application.route('/calc', methods=['POST'])
 def calc():
@@ -159,7 +159,7 @@ def webhook():
             "Afin de pouvoir vous aider, nous allons avoir besoin de quelques informations :\n\n" \
             "1. La puissance souscrite : DPP pour Domestique Petite Puissance (puissance la plus fréquente) ou DMP pour Domestique Moyenne Puissance \n\n" \
             "2. S'agit-il de votre première recharge du mois. Si oui on passe directement à l'étape 4 \n\n" \
-            "3. S'il ne s'agit pas de votre première, le montant total déjà rechargé dans le mois (par exemple 15.000 si vous aviez déjà rechargé 10.000 et 5.000 FCFA plutôt dans le mois) \n\n" \
+            "3. S'il ne s'agit pas de votre première recharge, le montant total déjà rechargé dans le mois (par exemple 15.000 si vous aviez déjà rechargé 10.000 et 5.000 FCFA plutôt dans le mois) \n\n" \
             "4. Enfin le montant que vous souhaitez recharger \n\n\n\n" \
             "A tout moment vous recommencer au début en répondant RECOMMENCER")
 
@@ -186,12 +186,12 @@ def webhook():
             sessions[sender]['last_active'] = datetime.now()
             sessions[sender]['puissance'] = text.lower()
             if not text.lower() in ["dpp", "dmp"]:
-                send_message(sender, f"Seule la petite puissance domestique est gérée pour l'instant")
+                send_message(sender, f"Seule les puissances domestiques sont gérées pour l'instant")
                 del sessions[sender] # Reset session
                 return "OK", 200
             sessions[sender]['step'] = 2
             '''send_message(sender, "Est-ce votre première recharge du mois ?")'''
-            send_button_message(sender, "Est-ce votre première recharge du mois ?", ["Oui", "Non", "RECOMMENCER"])
+            send_button_message(sender, "Est-ce votre première recharge du mois ?", ["Oui", "Non", "Recommencer"])
         elif sessions[sender]['step'] == 2:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
@@ -210,7 +210,7 @@ def webhook():
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             if not is_valid_amount(text):
-                send_message(sender, f"Merci de saisir un montant déja rechargé valide (nombre positif).")
+                send_message(sender, f"Merci de saisir un montant déja rechargé valide (supérieur à 1.000 FCFA).")
             sessions[sender]['montant_deja_recharge'] = float(text)
             sessions[sender]['step'] = 4
             send_message(sender, "Quel est le montant que vous souhaitez recharger ?")
@@ -218,7 +218,7 @@ def webhook():
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             if not is_valid_amount(text):
-                send_message(sender, f"Merci de saisir un montant à recharger valide (nombre positif).")
+                send_message(sender, f"Merci de saisir un montant à recharger valide (supérieur à 1.000 FCFA).")
             sessions[sender]['montant_recharge'] = float(text)
             # Calcul
             result = calcul_kwh(
@@ -331,7 +331,7 @@ def send_list_message(to, header_text, body_text, footer_text, button_text, sect
 def is_valid_amount(value):
     try:
         amount = float(value)
-        return amount >= 0
+        return amount >= 1000
     except:
         return False
 def manageTIMEOUTSession(sender):
