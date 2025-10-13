@@ -44,14 +44,6 @@ quota_tranches={
     "tranche_3":{"quantite": 0, "cout": 0}
 }
 
-QUOTA_TRANCHE_1 = 0
-COUT_TRANCHE_1=0
-QUOTA_TRANCHE_2 = 0
-COUT_TRANCHE_2=0
-QUOTA_TRANCHE_3 = 0
-COUT_TRANCHE_3=0
-
-
 FRAIS_LOCATION = 429  # Frais à la première recharge du mois
 
 def montant_vers_kwh(cumul_montant, tranches):
@@ -74,6 +66,13 @@ def montant_vers_kwh(cumul_montant, tranches):
 
 
 def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
+    quota_tranches["tranche_1"]["quantite"]=0
+    quota_tranches["tranche_1"]["cout"]=0
+    quota_tranches["tranche_2"]["quantite"]=0
+    quota_tranches["tranche_2"]["cout"]=0
+    quota_tranches["tranche_3"]["quantite"]=0
+    quota_tranches["tranche_3"]["cout"]=0
+    
     if is_premiere_recharge:
         montant -= FRAIS_LOCATION
     else :
@@ -114,10 +113,11 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
     if is_premiere_recharge :
         location = FRAIS_LOCATION
 
-    return {"kwh":round(total_kwh, 1), "location": location, "quota_tranche_1": round(quota_tranches["tranche_1"]["quantite"],1),
-            "cout_tranche_1": round(quota_tranches["tranche_1"]["cout"],0), "quota_tranche_2": round(quota_tranches["tranche_2"]["quantite"],1),
-            "cout_tranche_2": round(quota_tranches["tranche_2"]["cout"],0), "quota_tranche_3": round(quota_tranches["tranche_3"]["quantite"],1),
-            "cout_tranche_3": round(quota_tranches["tranche_3"]["cout"],0)}
+    return {"kwh":round(total_kwh, 1), "location": location, 
+            "quota_tranche_1": round(quota_tranches["tranche_1"]["quantite"],1), "cout_tranche_1": round(quota_tranches["tranche_1"]["cout"],0), 
+            "quota_tranche_2": round(quota_tranches["tranche_2"]["quantite"],1), "cout_tranche_2": round(quota_tranches["tranche_2"]["cout"],0),
+            "quota_tranche_3": round(quota_tranches["tranche_3"]["quantite"],1), "cout_tranche_3": round(quota_tranches["tranche_3"]["cout"],0)
+            }
 
 @application.route('/calc', methods=['POST'])
 def calc():
@@ -154,6 +154,7 @@ def verify():
 @application.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
+    print(sessions)
     try:
         message = data["entry"][0]["changes"][0]["value"]["messages"][0]
         sender = message["from"]
@@ -260,7 +261,7 @@ def webhook():
             sessions[sender]['last_active'] = datetime.now()
             if text.lower() in ['oui', 'non']:
                 if text.lower()=='oui' :
-                    send_message(sender, f"Voici le détail de votre facturation : \n\n- Frais de location : {sessions[sender]["result"]["location"]} \n\n- {sessions[sender]["result"]["quota_tranche_1"]} kwh en tranche 1 pour un coût de {int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_2"]} kwh en tranche 2 pour un coût de {int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_3"]} kwh en tranche 3 pour un coût de {int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA".replace(",", " "))
+                    send_message(sender, f"Voici le détail de votre facturation : \n\n- *Frais de location* : *{sessions[sender]["result"]["location"]}* \n\n- *{sessions[sender]["result"]["quota_tranche_1"]}* kwh en *tranche 1* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_2"]}* kwh en *tranche 2* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_3"]}* kwh en *tranche 3* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA*".replace(",", " "))
                      
                 send_message(sender, "Merci d'avoir utilisé nos service. A bientôt")              
                 del sessions[sender]  # Reset session
@@ -382,6 +383,6 @@ def manageTIMEOUTSession(sender):
             return "Session expirée", 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    application.run(host="0.0.0.0", port=port)
-    '''application.run(debug=True)'''
+    '''port = int(os.environ.get("PORT", 5000))
+    application.run(host="0.0.0.0", port=port)'''
+    application.run(debug=True)
