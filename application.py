@@ -72,7 +72,7 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
     quota_tranches["tranche_2"]["cout"]=0
     quota_tranches["tranche_3"]["quantite"]=0
     quota_tranches["tranche_3"]["cout"]=0
-    
+
     if is_premiere_recharge:
         montant -= FRAIS_LOCATION
     else :
@@ -154,7 +154,6 @@ def verify():
 @application.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
-    print(sessions)
     try:
         message = data["entry"][0]["changes"][0]["value"]["messages"][0]
         sender = message["from"]
@@ -383,6 +382,6 @@ def manageTIMEOUTSession(sender):
             return "Session expirée", 200
 
 if __name__ == '__main__':
-    '''port = int(os.environ.get("PORT", 5000))
-    application.run(host="0.0.0.0", port=port)'''
-    application.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    application.run(host="0.0.0.0", port=port)
+    '''application.run(debug=True)'''
