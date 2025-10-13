@@ -260,7 +260,7 @@ def webhook():
             sessions[sender]['last_active'] = datetime.now()
             if text.lower() in ['oui', 'non']:
                 if text.lower()=='oui' :
-                    send_message(sender, f"Voici le détail de votre facturation : \n\n- Frais de location : {sessions[sender]["result"]["location"]} \n\n- {sessions[sender]["result"]["quota_tranche_1"]} kwh en tranche 1 pour un coût de {sessions[sender]["result"]["cout_tranche_1"]:,.2f} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_2"]} kwh en tranche 2 pour un coût de {sessions[sender]["result"]["cout_tranche_2"]:,.2f} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_3"]} kwh en tranche 3 pour un coût de {sessions[sender]["result"]["cout_tranche_3"]:,.2f} FCFA" )
+                    send_message(sender, f"Voici le détail de votre facturation : \n\n- Frais de location : {sessions[sender]["result"]["location"]} \n\n- {sessions[sender]["result"]["quota_tranche_1"]} kwh en tranche 1 pour un coût de {int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_2"]} kwh en tranche 2 pour un coût de {int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_3"]} kwh en tranche 3 pour un coût de {int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA" ).replace(",", " ")
                      
                 send_message(sender, "Merci d'avoir utilisé nos service. A bientôt")              
                 del sessions[sender]  # Reset session
