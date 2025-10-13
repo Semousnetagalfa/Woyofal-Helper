@@ -19,25 +19,37 @@ application = Flask(__name__)
 
 #Tarifs TTC par tranche (en FCFA/kWh)
 TRANCHES_DPP = [
-    {"max": 150, "prix": 93.45},
-    {"max": 250, "prix": 139.90},
-    {"max": float('inf'), "prix": 165.08}
+    {"name": "tranche_1", "max": 150, "prix": 93.45},
+    {"name": "tranche_2", "max": 250, "prix": 139.90},
+    {"name": "tranche_3", "max": float('inf'), "prix": 165.08}
 ]
 TRANCHES_DMP = [
-    {"max": 150, "prix": 114.015},
-    {"max": 250, "prix": 147.13},
-    {"max": float('inf'), "prix": 173.61}
+    {"name": "tranche_1", "max": 150, "prix": 114.015},
+    {"name": "tranche_2", "max": 250, "prix": 147.13},
+    {"name": "tranche_3", "max": float('inf'), "prix": 173.61}
 ]
 TRANCHES_PPP = [
-    {"max": 150, "prix": 167.90},
-    {"max": 250, "prix": 194.59},
-    {"max": float('inf'), "prix": 229.61}
+    {"name": "tranche_1", "max": 150, "prix": 167.90},
+    {"name": "tranche_2", "max": 250, "prix": 194.59},
+    {"name": "tranche_3", "max": float('inf'), "prix": 229.61}
 ]
 TRANCHES_PMP = [
-    {"max": 150, "prix": 169.14},
-    {"max": 250, "prix": 195.79},
-    {"max": float('inf'), "prix": 231.03}
+    {"name": "tranche_1", "max": 150, "prix": 169.14},
+    {"name": "tranche_2", "max": 250, "prix": 195.79},
+    {"name": "tranche_3", "max": float('inf'), "prix": 231.03}
 ]
+quota_tranches={
+    "tranche_1":{"quantite": 0, "cout": 0},
+    "tranche_2":{"quantite": 0, "cout": 0},
+    "tranche_3":{"quantite": 0, "cout": 0}
+}
+
+QUOTA_TRANCHE_1 = 0
+COUT_TRANCHE_1=0
+QUOTA_TRANCHE_2 = 0
+COUT_TRANCHE_2=0
+QUOTA_TRANCHE_3 = 0
+COUT_TRANCHE_3=0
 
 
 FRAIS_LOCATION = 429  # Frais à la première recharge du mois
@@ -66,7 +78,6 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
         montant -= FRAIS_LOCATION
     else :
         cumul_montant -= FRAIS_LOCATION
-
     if puissance == "dpp":
         tranches = TRANCHES_DPP
     elif puissance == "dmp":
@@ -78,6 +89,7 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
     montant_restant = montant
     cumul_temp = cumul_kwh    
     for tranche in tranches:
+        tranche_name=tranche['name']
         tranche_limit = tranche['max']
         tranche_prix = tranche['prix']
         if cumul_temp >= tranche_limit:
@@ -86,15 +98,26 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
         cout_tranche = quota_tranche * tranche_prix
 
         if montant_restant >= cout_tranche:
+            quota_tranches[tranche_name]["quantite"]=quota_tranche
+            quota_tranches[tranche_name]["cout"]=cout_tranche
             total_kwh += quota_tranche
             montant_restant -= cout_tranche
             cumul_temp += quota_tranche
-        else:
+        else:            
             kwh_tranche = montant_restant / tranche_prix
-            total_kwh += kwh_tranche
+            total_kwh += kwh_tranche            
+            quota_tranches[tranche_name]["quantite"]=kwh_tranche
+            quota_tranches[tranche_name]["cout"]=montant_restant
             montant_restant = 0
-            break    
-    return round(total_kwh, 1)
+            break     
+    location = 0
+    if is_premiere_recharge :
+        location = FRAIS_LOCATION
+
+    return {"kwh":round(total_kwh, 1), "location": location, "quota_tranche_1": round(quota_tranches["tranche_1"]["quantite"],1),
+            "cout_tranche_1": round(quota_tranches["tranche_1"]["cout"],0), "quota_tranche_2": round(quota_tranches["tranche_2"]["quantite"],1),
+            "cout_tranche_2": round(quota_tranches["tranche_2"]["cout"],0), "quota_tranche_3": round(quota_tranches["tranche_3"]["quantite"],1),
+            "cout_tranche_3": round(quota_tranches["tranche_3"]["cout"],0)}
 
 @application.route('/calc', methods=['POST'])
 def calc():
@@ -200,10 +223,10 @@ def webhook():
                 if sessions[sender]['premiere_recharge'] :
                     sessions[sender]['montant_deja_recharge']=0 
                     sessions[sender]['step'] = 4
-                    send_message(sender, "Quel est le montant que vous souhaitez recharger ? (Ou recommencer pour revenir au début)")
+                    send_message(sender, "Quel est le montant que vous souhaitez recharger ? (ou recommencer pour revenir au début)")
                 else:
                     sessions[sender]['step'] = 3
-                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ? (Ou recommencer pour revenir au début)") 
+                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ? (ou recommencer pour revenir au début)") 
             else:  
                 send_message(sender, "Merci de répondre par 'oui' ou 'non'.")         
         elif sessions[sender]['step'] == 3:
@@ -214,23 +237,36 @@ def webhook():
             else :
                 sessions[sender]['montant_deja_recharge'] = float(text)
                 sessions[sender]['step'] = 4
-                send_message(sender, "Quel est le montant que vous souhaitez recharger ?(Ou recommencer pour revenir au début)")
+                send_message(sender, "Quel est le montant que vous souhaitez recharger ?(ou recommencer pour revenir au début)")
         elif sessions[sender]['step'] == 4:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             if not is_valid_amount(text):
                 send_message(sender, f"Merci de saisir un montant à recharger valide (supérieur à 1.000 FCFA).")
             else :
+                sessions[sender]['step'] = 5
                 sessions[sender]['montant_recharge'] = float(text)
                 # Calcul
-                result = calcul_kwh(
+                sessions[sender]['result'] = calcul_kwh(
                     puissance=sessions[sender]['puissance'],
                     montant=float(sessions[sender]['montant_recharge']),
                     cumul_montant=float(sessions[sender]['montant_deja_recharge']),
                     is_premiere_recharge=sessions[sender]['premiere_recharge']
                 )
-                send_message(sender, f"✅ Vous recevrez environ {result} kWh.")
+                send_message(sender, f"✅ Vous recevrez environ {sessions[sender]["result"]["kwh"]} kWh.")
+                send_button_message(sender, "Voulez-vous voir le détail de cette recharge ?", ["Oui", "Non", "Recommencer"])
+        elif sessions[sender]['step'] == 5:
+            # Mise à jour du timestamp
+            sessions[sender]['last_active'] = datetime.now()
+            if text.lower() in ['oui', 'non']:
+                if text.lower()=='oui' :
+                    send_message(sender, f"Voici le détail de votre facturation : \n\n- Frais de location : {sessions[sender]["result"]["location"]} \n\n- {sessions[sender]["result"]["quota_tranche_1"]} kwh en tranche 1 pour un coût de {sessions[sender]["result"]["cout_tranche_1"]:,.2f} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_2"]} kwh en tranche 2 pour un coût de {sessions[sender]["result"]["cout_tranche_2"]:,.2f} FCFA \n\n- {sessions[sender]["result"]["quota_tranche_3"]} kwh en tranche 3 pour un coût de {sessions[sender]["result"]["cout_tranche_3"]:,.2f} FCFA" )
+                     
+                send_message(sender, "Merci d'avoir utilisé nos service. A bientôt")              
                 del sessions[sender]  # Reset session
+            else:  
+                send_message(sender, "Merci de répondre par 'oui' ou 'non'.")  
+
 
     except Exception as e:
         return f"Erreur : {e}"
@@ -348,3 +384,4 @@ def manageTIMEOUTSession(sender):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     application.run(host="0.0.0.0", port=port)
+    '''application.run(debug=True)'''
