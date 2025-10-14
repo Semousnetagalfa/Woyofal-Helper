@@ -177,14 +177,14 @@ def webhook():
         if sender not in sessions:
             sessions[sender] = {'step': 1}
 
-            send_message(sender, "Bienvenue sur Woyofal Helper 👋. \n\n" \
+            send_message(sender, "Bienvenue sur Xam Sa Woyofal 👋. \n\n" \
             "Ce service a pour but de vous aider à estimer le nombre de kwh que vous allez recevoir après votre recharge.\n" \
             "Afin de pouvoir vous aider, nous allons avoir besoin de quelques informations :\n\n" \
             "1. La puissance souscrite : DPP pour Domestique Petite Puissance (puissance la plus fréquente) ou DMP pour Domestique Moyenne Puissance \n\n" \
             "2. S'agit-il de votre première recharge du mois. Si oui on passe directement à l'étape 4 \n\n" \
             "3. S'il ne s'agit pas de votre première recharge, le montant total déjà rechargé dans le mois (par exemple 15.000 si vous aviez déjà rechargé 10.000 et 5.000 FCFA plutôt dans le mois) \n\n" \
             "4. Enfin le montant que vous souhaitez recharger \n\n\n\n" \
-            "A tout moment vous recommencer au début en répondant RECOMMENCER")
+            "A tout moment vous pouvez revenir au tout début en répondant 'Recommencer'")
 
             send_button_message(sender, "Quelle est votre puissance souscrite ?", ["DPP", "DMP"])
 
@@ -209,7 +209,7 @@ def webhook():
             sessions[sender]['last_active'] = datetime.now()
             sessions[sender]['puissance'] = text.lower()
             if not text.lower() in ["dpp", "dmp"]:
-                send_message(sender, f"Seule les puissances domestiques sont gérées pour l'instant")
+                send_message(sender, f"Seules les puissances domestiques sont gérées pour l'instant")
                 del sessions[sender] # Reset session
                 return "OK", 200
             sessions[sender]['step'] = 2
@@ -223,10 +223,10 @@ def webhook():
                 if sessions[sender]['premiere_recharge'] :
                     sessions[sender]['montant_deja_recharge']=0 
                     sessions[sender]['step'] = 4
-                    send_message(sender, "Quel est le montant que vous souhaitez recharger ? (ou recommencer pour revenir au début)")
+                    send_message(sender, "Quel est le montant que vous souhaitez recharger ? \n (ou recommencer pour revenir au début)")
                 else:
                     sessions[sender]['step'] = 3
-                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ? (ou recommencer pour revenir au début)") 
+                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ? \n (ou recommencer pour revenir au début)") 
             else:  
                 send_message(sender, "Merci de répondre par 'oui' ou 'non'.")         
         elif sessions[sender]['step'] == 3:
@@ -237,7 +237,7 @@ def webhook():
             else :
                 sessions[sender]['montant_deja_recharge'] = float(text)
                 sessions[sender]['step'] = 4
-                send_message(sender, "Quel est le montant que vous souhaitez recharger ?(ou recommencer pour revenir au début)")
+                send_message(sender, "Quel est le montant que vous souhaitez recharger ? \n (ou recommencer pour revenir au début)")
         elif sessions[sender]['step'] == 4:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
@@ -260,9 +260,9 @@ def webhook():
             sessions[sender]['last_active'] = datetime.now()
             if text.lower() in ['oui', 'non']:
                 if text.lower()=='oui' :
-                    send_message(sender, f"Voici le détail de votre facturation : \n\n- *Frais de location* : *{sessions[sender]["result"]["location"]}* \n\n- *{sessions[sender]["result"]["quota_tranche_1"]}* kwh en *tranche 1* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_2"]}* kwh en *tranche 2* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_3"]}* kwh en *tranche 3* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA*".replace(",", " "))
+                    send_message(sender, f"Voici le détail de votre recharge : \n\n- *Frais de location* : *{sessions[sender]["result"]["location"]}* \n\n- *{sessions[sender]["result"]["quota_tranche_1"]}* kwh en *tranche 1* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_2"]}* kwh en *tranche 2* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_3"]}* kwh en *tranche 3* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA*".replace(",", " "))
                      
-                send_message(sender, "Merci d'avoir utilisé nos service. A bientôt")              
+                send_message(sender, "Merci d'avoir utilisé nos services. A bientôt")              
                 del sessions[sender]  # Reset session
             else:  
                 send_message(sender, "Merci de répondre par 'oui' ou 'non'.")  
