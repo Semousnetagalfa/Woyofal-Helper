@@ -19,29 +19,29 @@ application = Flask(__name__)
 
 #Tarifs TTC par tranche (en FCFA/kWh)
 TRANCHES_DPP = [
-    {"name": "tranche_1", "max": 150, "prix": 93.45},
-    {"name": "tranche_2", "max": 250, "prix": 139.90},
-    {"name": "tranche_3", "max": float('inf'), "prix": 165.08}
+    {"name": "tranche 1", "max": 150, "prix": 93.45},
+    {"name": "tranche 2", "max": 250, "prix": 139.90},
+    {"name": "tranche 3", "max": float('inf'), "prix": 165.08}
 ]
 TRANCHES_DMP = [
-    {"name": "tranche_1", "max": 150, "prix": 114.015},
-    {"name": "tranche_2", "max": 250, "prix": 147.13},
-    {"name": "tranche_3", "max": float('inf'), "prix": 173.61}
+    {"name": "tranche 1", "max": 150, "prix": 114.015},
+    {"name": "tranche 2", "max": 250, "prix": 147.13},
+    {"name": "tranche 3", "max": float('inf'), "prix": 173.61}
 ]
 TRANCHES_PPP = [
-    {"name": "tranche_1", "max": 150, "prix": 167.90},
-    {"name": "tranche_2", "max": 250, "prix": 194.59},
-    {"name": "tranche_3", "max": float('inf'), "prix": 229.61}
+    {"name": "tranche 1", "max": 150, "prix": 167.90},
+    {"name": "tranche 2", "max": 250, "prix": 194.59},
+    {"name": "tranche 3", "max": float('inf'), "prix": 229.61}
 ]
 TRANCHES_PMP = [
-    {"name": "tranche_1", "max": 150, "prix": 169.14},
-    {"name": "tranche_2", "max": 250, "prix": 195.79},
-    {"name": "tranche_3", "max": float('inf'), "prix": 231.03}
+    {"name": "tranche 1", "max": 150, "prix": 169.14},
+    {"name": "tranche 2", "max": 250, "prix": 195.79},
+    {"name": "tranche 3", "max": float('inf'), "prix": 231.03}
 ]
 quota_tranches={
-    "tranche_1":{"quantite": 0, "cout": 0},
-    "tranche_2":{"quantite": 0, "cout": 0},
-    "tranche_3":{"quantite": 0, "cout": 0}
+    "tranche 1":{"quantite": 0, "cout": 0},
+    "tranche 2":{"quantite": 0, "cout": 0},
+    "tranche 3":{"quantite": 0, "cout": 0}
 }
 
 FRAIS_LOCATION = 429  # Frais à la première recharge du mois
@@ -66,12 +66,13 @@ def montant_vers_kwh(cumul_montant, tranches):
 
 
 def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
-    quota_tranches["tranche_1"]["quantite"]=0
-    quota_tranches["tranche_1"]["cout"]=0
-    quota_tranches["tranche_2"]["quantite"]=0
-    quota_tranches["tranche_2"]["cout"]=0
-    quota_tranches["tranche_3"]["quantite"]=0
-    quota_tranches["tranche_3"]["cout"]=0
+    quota_tranches["tranche 1"]["quantite"]=0
+    quota_tranches["tranche 1"]["cout"]=0
+    quota_tranches["tranche 2"]["quantite"]=0
+    quota_tranches["tranche 2"]["cout"]=0
+    quota_tranches["tranche 3"]["quantite"]=0
+    quota_tranches["tranche 3"]["cout"]=0
+    detail_tranches=[]
 
     if is_premiere_recharge:
         montant -= FRAIS_LOCATION
@@ -99,6 +100,7 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
         if montant_restant >= cout_tranche:
             quota_tranches[tranche_name]["quantite"]=quota_tranche
             quota_tranches[tranche_name]["cout"]=cout_tranche
+            detail_tranches.append({'name':tranche_name,'prix': tranche_prix, 'kwh': quota_tranche})
             total_kwh += quota_tranche
             montant_restant -= cout_tranche
             cumul_temp += quota_tranche
@@ -107,6 +109,7 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
             total_kwh += kwh_tranche            
             quota_tranches[tranche_name]["quantite"]=kwh_tranche
             quota_tranches[tranche_name]["cout"]=montant_restant
+            detail_tranches.append({'name':tranche_name,'prix': tranche_prix, 'kwh': kwh_tranche})
             montant_restant = 0
             break     
     location = 0
@@ -114,10 +117,40 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
         location = FRAIS_LOCATION
 
     return {"kwh":round(total_kwh, 1), "location": location, 
-            "quota_tranche_1": round(quota_tranches["tranche_1"]["quantite"],1), "cout_tranche_1": round(quota_tranches["tranche_1"]["cout"],0), 
-            "quota_tranche_2": round(quota_tranches["tranche_2"]["quantite"],1), "cout_tranche_2": round(quota_tranches["tranche_2"]["cout"],0),
-            "quota_tranche_3": round(quota_tranches["tranche_3"]["quantite"],1), "cout_tranche_3": round(quota_tranches["tranche_3"]["cout"],0)
+            "quota_tranche_1": round(quota_tranches["tranche 1"]["quantite"],1), "cout_tranche_1": round(quota_tranches["tranche 1"]["cout"],0), 
+            "quota_tranche_2": round(quota_tranches["tranche 2"]["quantite"],1), "cout_tranche_2": round(quota_tranches["tranche 2"]["cout"],0),
+            "quota_tranche_3": round(quota_tranches["tranche 3"]["quantite"],1), "cout_tranche_3": round(quota_tranches["tranche 3"]["cout"],0),
+            "detail_tranches":detail_tranches
             }
+def format_montant(valeur):
+        return f"{int(valeur):,}".replace(",", " ")
+
+def generer_detail_recharge(montant_total, detail_tranches, frais_location):
+    lignes = [f"🔍 *Détail de votre recharge de {format_montant(montant_total)} F* :\n"]
+    montant_utilise = 0
+    total_kwh = 0
+
+    if frais_location:
+        lignes.append(f"• 📦 *Frais de location compteur* -> *{int(FRAIS_LOCATION):,} FCFA*")
+        montant_utilise += FRAIS_LOCATION
+
+    for tranche in detail_tranches:
+        name=tranche['name']
+        kwh = round(tranche['kwh'], 2)
+        prix = round(tranche['prix'], 2)
+        cout = round(kwh * prix, 0)
+        montant_utilise += cout
+        total_kwh += kwh
+
+        lignes.append(
+            f"• *{name}* -> *{round(kwh, 1)}* kWh -> *{format_montant(cout)} FCFA*"
+        )
+
+    lignes.append(f"\n📊 *Total énergie : {round(total_kwh, 1)} kWh*")
+    '''lignes.append(f"💵 *Montant total utilisé : {int(montant_utilise):,} F*")'''
+
+    return "\n".join(lignes)
+
 
 @application.route('/calc', methods=['POST'])
 def calc():
@@ -260,8 +293,11 @@ def webhook():
             sessions[sender]['last_active'] = datetime.now()
             if text.lower() in ['oui', 'non']:
                 if text.lower()=='oui' :
-                    send_message(sender, f"Voici le détail de votre recharge : \n\n- *Frais de location* : *{sessions[sender]["result"]["location"]}* \n\n- *{sessions[sender]["result"]["quota_tranche_1"]}* kwh en *tranche 1* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_2"]}* kwh en *tranche 2* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_3"]}* kwh en *tranche 3* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA*".replace(",", " "))
-                     
+                    '''send_message(sender, f"Voici le détail de votre recharge : \n\n- *Frais de location* : *{sessions[sender]["result"]["location"]}* \n\n- *{sessions[sender]["result"]["quota_tranche_1"]}* kwh en *tranche 1* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_2"]}* kwh en *tranche 2* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_3"]}* kwh en *tranche 3* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA*".replace(",", " "))'''
+                    print(sessions[sender]['result']['detail_tranches'])
+                    send_message(sender, generer_detail_recharge(sessions[sender]['montant_recharge'],
+                                                                 sessions[sender]['result']['detail_tranches'],
+                                                                 sessions[sender]['premiere_recharge']))
                 send_message(sender, "Merci d'avoir utilisé nos services. A bientôt")              
                 del sessions[sender]  # Reset session
             else:  
@@ -382,6 +418,6 @@ def manageTIMEOUTSession(sender):
             return "Session expirée", 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    application.run(host="0.0.0.0", port=port)
-    '''application.run(debug=True)'''
+    '''port = int(os.environ.get("PORT", 5000))
+    application.run(host="0.0.0.0", port=port)'''
+    application.run(debug=True)
