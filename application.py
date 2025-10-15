@@ -38,11 +38,6 @@ TRANCHES_PMP = [
     {"name": "tranche 2", "max": 250, "prix": 195.79},
     {"name": "tranche 3", "max": float('inf'), "prix": 231.03}
 ]
-quota_tranches={
-    "tranche 1":{"quantite": 0, "cout": 0},
-    "tranche 2":{"quantite": 0, "cout": 0},
-    "tranche 3":{"quantite": 0, "cout": 0}
-}
 
 FRAIS_LOCATION = 429  # Frais à la première recharge du mois
 
@@ -66,12 +61,6 @@ def montant_vers_kwh(cumul_montant, tranches):
 
 
 def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
-    quota_tranches["tranche 1"]["quantite"]=0
-    quota_tranches["tranche 1"]["cout"]=0
-    quota_tranches["tranche 2"]["quantite"]=0
-    quota_tranches["tranche 2"]["cout"]=0
-    quota_tranches["tranche 3"]["quantite"]=0
-    quota_tranches["tranche 3"]["cout"]=0
     detail_tranches=[]
 
     if is_premiere_recharge:
@@ -82,6 +71,10 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
         tranches = TRANCHES_DPP
     elif puissance == "dmp":
         tranches = TRANCHES_DMP
+    elif puissance == "ppp":
+        tranches = TRANCHES_PPP
+    elif puissance == "pmp":
+        tranches = TRANCHES_PMP
     else :
         return 0
     cumul_kwh = montant_vers_kwh(cumul_montant, tranches)
@@ -98,17 +91,13 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
         cout_tranche = quota_tranche * tranche_prix
 
         if montant_restant >= cout_tranche:
-            quota_tranches[tranche_name]["quantite"]=quota_tranche
-            quota_tranches[tranche_name]["cout"]=cout_tranche
             detail_tranches.append({'name':tranche_name,'prix': tranche_prix, 'kwh': quota_tranche})
             total_kwh += quota_tranche
             montant_restant -= cout_tranche
             cumul_temp += quota_tranche
         else:            
             kwh_tranche = montant_restant / tranche_prix
-            total_kwh += kwh_tranche            
-            quota_tranches[tranche_name]["quantite"]=kwh_tranche
-            quota_tranches[tranche_name]["cout"]=montant_restant
+            total_kwh += kwh_tranche   
             detail_tranches.append({'name':tranche_name,'prix': tranche_prix, 'kwh': kwh_tranche})
             montant_restant = 0
             break     
@@ -116,17 +105,14 @@ def calcul_kwh(puissance, montant, cumul_montant, is_premiere_recharge):
     if is_premiere_recharge :
         location = FRAIS_LOCATION
 
-    return {"kwh":round(total_kwh, 1), "location": location, 
-            "quota_tranche_1": round(quota_tranches["tranche 1"]["quantite"],1), "cout_tranche_1": round(quota_tranches["tranche 1"]["cout"],0), 
-            "quota_tranche_2": round(quota_tranches["tranche 2"]["quantite"],1), "cout_tranche_2": round(quota_tranches["tranche 2"]["cout"],0),
-            "quota_tranche_3": round(quota_tranches["tranche 3"]["quantite"],1), "cout_tranche_3": round(quota_tranches["tranche 3"]["cout"],0),
+    return {"kwh":round(total_kwh, 1),
             "detail_tranches":detail_tranches
             }
 def format_montant(valeur):
         return f"{int(valeur):,}".replace(",", " ")
 
 def generer_detail_recharge(montant_total, detail_tranches, frais_location):
-    lignes = [f"🔍 *Détail de votre recharge de {format_montant(montant_total)} F* :\n"]
+    lignes = [f"🔍 *Détail de votre recharge de {format_montant(montant_total)} FCFA* :\n"]
     montant_utilise = 0
     total_kwh = 0
 
@@ -150,6 +136,19 @@ def generer_detail_recharge(montant_total, detail_tranches, frais_location):
     '''lignes.append(f"💵 *Montant total utilisé : {int(montant_utilise):,} F*")'''
 
     return "\n".join(lignes)
+
+def format_indented_block(text, indent="   ", max_length=50):
+    words = text.split()
+    lines = []
+    current_line = indent
+    for word in words:
+        if len(current_line) + len(word) + 1 > max_length:
+            lines.append(current_line)
+            current_line = indent + word
+        else:
+            current_line += " " + word
+    lines.append(current_line)
+    return "\n".join(lines)
 
 
 @application.route('/calc', methods=['POST'])
@@ -201,32 +200,33 @@ def webhook():
 
         if text.lower() in ["restart", "recommencer"]:
             sessions[sender] = {"step": 1}
-            '''send_message(sender, f"On recommence. Quelle est la puissance souscrite ?")'''
-            send_button_message(sender, "On recommence. Quelle est la puissance souscrite ?", ["DPP", "DMP"])
-            return "OK", 200
-
+            send_button_message(sender, "On recommence. Quelle est votre type d'installation ?", ["Domestique", "Professionnel"])
 
         # Logique par étapes
         if sender not in sessions:
             sessions[sender] = {'step': 1}
-
+            bloc_puissances = format_indented_block("a. DPP pour Domestique Petite Puissance (puissance la plus fréquente) \n" \
+            "b. DMP pour Domestique Moyenne Puissance \n\n" \
+            "c. PPP pour Professionnel Petite Puissance \n" \
+            "d. PMP pour Professionnel Moyenne Puissance")
             send_message(sender, "Bienvenue sur Xam Sa Woyofal 👋. \n\n" \
             "Ce service a pour but de vous aider à estimer le nombre de kwh que vous allez recevoir après votre recharge.\n" \
             "Afin de pouvoir vous aider, nous allons avoir besoin de quelques informations :\n\n" \
-            "1. La puissance souscrite : DPP pour Domestique Petite Puissance (puissance la plus fréquente) ou DMP pour Domestique Moyenne Puissance \n\n" \
-            "2. S'agit-il de votre première recharge du mois. Si oui on passe directement à l'étape 4 \n\n" \
-            "3. S'il ne s'agit pas de votre première recharge, le montant total déjà rechargé dans le mois (par exemple 15.000 si vous aviez déjà rechargé 10.000 et 5.000 FCFA plutôt dans le mois) \n\n" \
-            "4. Enfin le montant que vous souhaitez recharger \n\n\n\n" \
+            "1. Le type d'installation : Domestique ou Professionnel \n" \
+            "2. La puissance souscrite : Petite Puissance (DPP ou PPP) ou Moyenne Puissance (DMP ou PMP)\n" \
+            "3. S'agit-il de votre première recharge du mois. Si oui on passe directement à l'étape 5 \n\n" \
+            "4. S'il ne s'agit pas de votre première recharge, le montant total déjà rechargé dans le mois (par exemple 15.000 si vous aviez déjà rechargé 10.000 et 5.000 FCFA plutôt dans le mois) \n\n" \
+            "5. Enfin le montant que vous souhaitez recharger \n\n\n\n" \
             "A tout moment vous pouvez revenir au tout début en répondant 'Recommencer'")
 
-            send_button_message(sender, "Quelle est votre puissance souscrite ?", ["DPP", "DMP"])
+            send_button_message(sender, "Quelle est votre type d'installation ?", ["Domestique", "Professionnel"])
 
-            options = [("DPP", "DPP"),
+            '''options = [("DPP", "DPP"),
                        ("DMP", "DMP"),
                        ("PPP", "PPP"),
                        ("PMP", "PMP")]
 
-            '''send_list_message(to=sender,
+            send_list_message(to=sender,
                               header_text="Choix de la puissance",
                               body_text="Sélectionne ta puissance souscrite :",
                               footer_text="Woyofal Helper",
@@ -236,48 +236,69 @@ def webhook():
 
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
+        
+        elif sessions[sender]['step']==1:
+            sessions[sender]['last_active'] = datetime.now()
+            sessions[sender]['type']=text.lower()
+            if not text.lower() in ['domestique', 'professionnel']:
+                send_message(sender, f"Votre installation Woyofal est soit domestique soit professionnelle")
+                send_button_message(sender, "Quelle est votre type d'installation ?", ["Domestique", "Professionnel"])
+            else:
+                sessions[sender]['step'] = 2
+                if text.lower()=='domestique':
+                    send_button_message(sender, "Quelle est votre puissance souscrite ?", ["DPP", "DMP", "Recommencer"])
+                else : 
+                    send_button_message(sender, "Quelle est votre puissance souscrite ?", ["PPP", "PMP", "Recommencer"])
 
-        elif sessions[sender]['step'] == 1:
+        elif sessions[sender]['step'] == 2:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             sessions[sender]['puissance'] = text.lower()
-            if not text.lower() in ["dpp", "dmp"]:
-                send_message(sender, f"Seules les puissances domestiques sont gérées pour l'instant")
-                del sessions[sender] # Reset session
-                return "OK", 200
-            sessions[sender]['step'] = 2
-            '''send_message(sender, "Est-ce votre première recharge du mois ?")'''
-            send_button_message(sender, "Est-ce votre première recharge du mois ?", ["Oui", "Non", "Recommencer"])
-        elif sessions[sender]['step'] == 2:
+            if sessions[sender]['type']=='domestique' and not text.lower() in ["dpp", "dmp"]:
+                send_message(sender, f"La valeur choisie n'est pas une puissance valide")
+                send_button_message(sender, "Quelle est votre puissance souscrite ?", ["DPP", "DMP", "Recommencer"])
+            elif sessions[sender]['type']=='professionel' and not text.lower() in ["ppp", "pmp"]: 
+                send_message(sender, f"La valeur choisie n'est pas une puissance valide")
+                send_button_message(sender, "Quelle est votre puissance souscrite ?", ["PPP", "PMP", "Recommencer"])
+            else:
+                sessions[sender]['step'] = 3
+                send_button_message(sender, "Est-ce votre première recharge du mois ?", ["Oui", "Non", "Recommencer"])
+        elif sessions[sender]['step'] == 3:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             if text.lower() in ['oui', 'non']:
                 sessions[sender]['premiere_recharge'] = text.lower() == "oui"
                 if sessions[sender]['premiere_recharge'] :
                     sessions[sender]['montant_deja_recharge']=0 
-                    sessions[sender]['step'] = 4
-                    send_message(sender, "Quel est le montant que vous souhaitez recharger ? \n (ou recommencer pour revenir au début)")
+                    sessions[sender]['step'] = 5
+                    send_message(sender, "Quel est le montant que vous souhaitez recharger ?")
+                    #send_button_message(sender, "", ["Recommencer"])
                 else:
-                    sessions[sender]['step'] = 3
-                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ? \n (ou recommencer pour revenir au début)") 
+                    sessions[sender]['step'] = 4
+                    send_message(sender, "Quel est le montant total déjà rechargé ce mois-ci ?") 
+                    #send_button_message(sender, "", ["Recommencer"])
             else:  
-                send_message(sender, "Merci de répondre par 'oui' ou 'non'.")         
-        elif sessions[sender]['step'] == 3:
-            # Mise à jour du timestamp
-            sessions[sender]['last_active'] = datetime.now()
-            if not is_valid_amount(text):
-                send_message(sender, f"Merci de saisir un montant déja rechargé valide (supérieur à 1.000 FCFA).")
-            else :
-                sessions[sender]['montant_deja_recharge'] = float(text)
-                sessions[sender]['step'] = 4
-                send_message(sender, "Quel est le montant que vous souhaitez recharger ? \n (ou recommencer pour revenir au début)")
+                send_message(sender, "Merci de répondre par 'oui' ou 'non'.") 
+                send_button_message(sender, "", ["Recommencer"])        
         elif sessions[sender]['step'] == 4:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             if not is_valid_amount(text):
-                send_message(sender, f"Merci de saisir un montant à recharger valide (supérieur à 1.000 FCFA).")
+                send_message(sender, f"Merci de saisir un montant déja rechargé valide (supérieur à 1.000 FCFA).")
+                #send_button_message(sender, "", ["Recommencer"]) 
             else :
+                sessions[sender]['montant_deja_recharge'] = float(text)
                 sessions[sender]['step'] = 5
+                send_message(sender, "Quel est le montant que vous souhaitez recharger ?")
+                #send_button_message(sender, "", ["Recommencer"]) 
+        elif sessions[sender]['step'] == 5:
+            # Mise à jour du timestamp
+            sessions[sender]['last_active'] = datetime.now()
+            if not is_valid_amount(text):
+                send_message(sender, f"Merci de saisir un montant à recharger valide (supérieur à 1.000 FCFA).")
+                #send_button_message(sender, "", ["Recommencer"]) 
+            else :
+                sessions[sender]['step'] = 6
                 sessions[sender]['montant_recharge'] = float(text)
                 # Calcul
                 sessions[sender]['result'] = calcul_kwh(
@@ -288,20 +309,20 @@ def webhook():
                 )
                 send_message(sender, f"✅ Vous recevrez environ {sessions[sender]["result"]["kwh"]} kWh.")
                 send_button_message(sender, "Voulez-vous voir le détail de cette recharge ?", ["Oui", "Non", "Recommencer"])
-        elif sessions[sender]['step'] == 5:
+        elif sessions[sender]['step'] == 6:
             # Mise à jour du timestamp
             sessions[sender]['last_active'] = datetime.now()
             if text.lower() in ['oui', 'non']:
                 if text.lower()=='oui' :
                     '''send_message(sender, f"Voici le détail de votre recharge : \n\n- *Frais de location* : *{sessions[sender]["result"]["location"]}* \n\n- *{sessions[sender]["result"]["quota_tranche_1"]}* kwh en *tranche 1* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_1"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_2"]}* kwh en *tranche 2* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_2"]):,} FCFA* \n\n- *{sessions[sender]["result"]["quota_tranche_3"]}* kwh en *tranche 3* pour un coût de *{int(sessions[sender]["result"]["cout_tranche_3"]):,} FCFA*".replace(",", " "))'''
-                    print(sessions[sender]['result']['detail_tranches'])
                     send_message(sender, generer_detail_recharge(sessions[sender]['montant_recharge'],
                                                                  sessions[sender]['result']['detail_tranches'],
                                                                  sessions[sender]['premiere_recharge']))
                 send_message(sender, "Merci d'avoir utilisé nos services. A bientôt")              
                 del sessions[sender]  # Reset session
             else:  
-                send_message(sender, "Merci de répondre par 'oui' ou 'non'.")  
+                send_message(sender, "Merci de répondre par 'oui' ou 'non'.")
+                #send_button_message(sender, "", ["Recommencer"]) 
 
 
     except Exception as e:
